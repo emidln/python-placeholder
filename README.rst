@@ -1,3 +1,7 @@
+Simple class to create placeholder images for wireframing.
+
+Inspired by: http://github.com/mdarby/placeholder
+
 Usage::
 
         python placeholder.py <width> <height> <bg_color> <txt_color>
