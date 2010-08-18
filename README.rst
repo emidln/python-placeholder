@@ -33,7 +33,10 @@ API Usage
         result_path = img.save()
 
 
-Command Line Usage::
+Command Line Usage
+==================
+
+::
 
         python placeholder.py <width> <height> <bg_color> <txt_color> [image_text]
         display $(python placeholder.py 800 600 darkgray green SOME_TEXT_MORE)
