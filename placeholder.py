@@ -196,7 +196,8 @@ class TestSize(unittest.TestCase):
 
 class Color(Base):
 
-    MODE = u'RGB'
+    COLORMAP = ImageColor.colormap
+    MODE = u'RGBA'
 
     BLACK = ImageColor.getrgb(u'black')
     WHITE = ImageColor.getrgb(u'white')
@@ -207,7 +208,7 @@ class Color(Base):
 
     def __getattribute__(self, name):
         try:
-            return ImageColor.colormap[name]
+            return Color.COLORMAP[name]
         except (KeyError, ) as error:
             return Base.__getattribute__(self, name)
 
@@ -244,10 +245,10 @@ class PlaceHolderImage(Base):
     """
 
     def __init__(self, width, height,
-                 bg_color=Color.WHITE,
                  fg_color=Color.BLACK,
-                 text=u'Placeholder',
-                 font=u'Selfism_Normal.otf',
+                 bg_color=Color.WHITE,
+                 text=None,
+                 font=u'Verdana.ttf',
                  fontsize=24,
                  encoding=u'unic',
                  mode=Color.MODE,
@@ -268,39 +269,52 @@ class PlaceHolderImage(Base):
         self._mode = mode
         self._fmt = fmt
 
-    def fmt(self):
+    def save(self):
 
         from tempfile import NamedTemporaryFile
         with NamedTemporaryFile(delete=False) as target:
-
-            font = ImageFont.truetype(
-                self._font,
-                size=self._fontsize,
-                encoding=self._encoding)
-
-            txt_img = Image.new(self._mode, self._size, self._bg_color)
-            drawing = ImageDraw.Draw(txt_img)
-            txt_width, txt_height = font.getsize(self._text)
-
             result_img = Image.new(self._mode, self._size, self._bg_color)
             img_width, img_height = result_img.size
 
-            left = img_width/2 - txt_width/2
-            top = img_height/2 - txt_height/2
+            self.log.debug(u'result_img.size: %r, self._size: %r',
+                           result_img.size, self._size)
 
-            drawing.text((left, top),
-                         self._text,
-                         font=font,
-                         fill=self._fg_color)
+            if self._text is None:
+                self._text = "x".join([str(n) for n in self._size])
+            if self._text is not None:
+                try:
+                    font = ImageFont.truetype(
+                        self._font,
+                        size=self._fontsize,
+                        encoding=self._encoding)
+                except (IOError, ) as error:
+                    font = ImageFont.load_default()
+
+                self.log.debug(u'The text is: %r', self._text)
+                txt_size = Size(*font.getsize(self._text))
+                self.log.debug(u'Text Size: %r', txt_size)
+                txt_img = Image.new("RGBA", self._size, self._bg_color)
+                self.log.debug(u'Size of txt_img: %r', txt_size)
+
+                drawing = ImageDraw.Draw(txt_img)
+                left = self._size.width/2 - txt_size.width/2
+                top = self._size.height/2 - txt_size.height/2
+                drawing.text((left, top, ),
+                             self._text,
+                             font=font,
+                             fill=self._fg_color)
 
 
-            txt_img = ImageOps.fit(txt_img,
-                                   result_img.size,
-                                   method=Image.BICUBIC,
-                                   centering=(0.5, 0.5)
+
+                txt_img = ImageOps.fit(txt_img,
+                                       result_img.size,
+                                       method=Image.BICUBIC,
+                                       centering=(0.5, 0.5)
                                    )
-            result_img.paste(txt_img)
-            result_img.save(target, self._fmt)
+                result_img.paste(txt_img)
+            # result_img.show()
+            # sys.exit(1)
+            txt_img.save(target, self._fmt)
             self.log.debug(u'Wrote Image to: %r', target.name)
             del(result_img)
         return target.name
@@ -309,22 +323,28 @@ class PlaceHolderImage(Base):
 class TestPlaceHolderImage(unittest.TestCase):
     u"""Tests the ``PlaceHolderImage`` class.
     """
-    def test_fmt(self):
+    def test_save(self):
         i = PlaceHolderImage(640, 480)
-        i.fmt()
+        i.save()
     def test__txt_img(self):
-        c = Color()
-        i = PlaceHolderImage(640, 480, c.gray)
-        i._txt_img()
-
+        # c = Color()
+        # i = PlaceHolderImage(640, 480, c.gray)
+        # i._txt_img()
+        pass
 if __name__ == '__main__':
+    log = logging.getLogger(u'__main__')
     width = int(sys.argv[1])
     height = int(sys.argv[2])
     c_fg = getattr(Color(), sys.argv[3])
     c_bg = getattr(Color(), sys.argv[4])
-    txt = sys.argv[5]
+    try:
+        txt = sys.argv[5]
+    except (IndexError, ) as error:
+        log.debug(u'No text given')
+        txt = None
+
     img = PlaceHolderImage(width, height, c_fg, c_bg, text=txt)
-    result = img.fmt()
+    result = img.save()
     print result
     # os.unlink(result)
 
